@@ -23,7 +23,6 @@ DallasTemperature sensors(&oneWire);
 //
 // RTC
 //
-
 #include "RTClib.h"
 RTC_DS1307 rtc;
 
@@ -42,7 +41,7 @@ void setupDisplay(void) {
   }
   
   display.display();
-  delay(2000);
+  delay(1000);
   display.clearDisplay();
   display.display();
 }
@@ -79,20 +78,19 @@ void loop() {
  Serial.println(sensors.getTempCByIndex(0));
  
  display.clearDisplay();
- display.setCursor(0,0);
  display.setTextSize(1);
  display.setTextColor(SSD1306_WHITE);
  
  display.setCursor(0,0);
  display.print(String(time.timestamp(DateTime::TIMESTAMP_DATE)));
 
-  display.setCursor(0,12);
+ display.setCursor(0,12);
  display.print(String(time.timestamp(DateTime::TIMESTAMP_TIME)));
 
-   display.setCursor(0,24);
+ display.setCursor(0,24);
  display.print("Line 3");
 
-    display.setCursor(0,36);
+ display.setCursor(0,36);
  display.print("Line 4");
  
  display.display();
