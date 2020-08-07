@@ -1,4 +1,3 @@
-//
 // DISPLAY
 //
 #include <SPI.h>
@@ -11,20 +10,21 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
-//
 // TEMPERATURE
-//
+// https://lastminuteengineers.com/multiple-ds18b20-arduino-tutorial/
 #include <OneWire.h> 
 #include <DallasTemperature.h>
-#define ONE_WIRE_BUS 0
+#define ONE_WIRE_BUS 4
 OneWire oneWire(ONE_WIRE_BUS); 
 DallasTemperature sensors(&oneWire);
 
-//
 // RTC
 //
 #include "RTClib.h"
 RTC_DS1307 rtc;
+
+// FUNK
+// https://daniel-ziegler.com/arduino/mikrocontroller/2017/06/16/Funksteckdose-arduino/
 
 void setup() {
   Serial.begin(9600);
@@ -48,6 +48,16 @@ void setupDisplay(void) {
 
 void setupTempSensors(void) {
   sensors.begin();
+
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Found ");
+  display.print(sensors.getDeviceCount(), DEC);
+  display.println(" devices.");
+  display.println("");
+
+   display.display();
+   delay(1000);
 }
 
 void setupRtc(void) {
@@ -68,11 +78,7 @@ void setupRtc(void) {
 }
 
 void loop() {
-
-
-
- sensors.requestTemperatures(); // Send the command to get temperature readings 
-   DateTime time = rtc.now();
+ DateTime time = rtc.now();
    
  Serial.print("Temperature is: "); 
  Serial.println(sensors.getTempCByIndex(0));
@@ -87,11 +93,19 @@ void loop() {
  display.setCursor(0,12);
  display.print(String(time.timestamp(DateTime::TIMESTAMP_TIME)));
 
+ sensors.requestTemperatures();
+
  display.setCursor(0,24);
- display.print("Line 3");
+ display.print("Temp 1: ");
+ display.print(sensors.getTempCByIndex(0));
+ display.print((char)9);
+ display.print("C");
 
  display.setCursor(0,36);
- display.print("Line 4");
+ display.print("Temp 2: ");
+ display.print(sensors.getTempCByIndex(1));
+ display.print((char)9);
+ display.print("C");
  
  display.display();
  
