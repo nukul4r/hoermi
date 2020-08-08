@@ -1,21 +1,19 @@
 // DISPLAY
-//
-#include <SPI.h>
+// https://github.com/greiman/SSD1306Ascii/blob/master/examples/HelloWorldWire/HelloWorldWire.ino
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define OLED_RESET     4
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+#include "SSD1306Ascii.h"
+#include "SSD1306AsciiWire.h"
+#define I2C_ADDRESS 0x3C
+#define RST_PIN -1
+SSD1306AsciiWire oled;
 
 
 // TEMPERATURE
 // https://lastminuteengineers.com/multiple-ds18b20-arduino-tutorial/
-#include <OneWire.h> 
+#include <OneWire.h>
 #include <DallasTemperature.h>
 #define ONE_WIRE_BUS 4
-OneWire oneWire(ONE_WIRE_BUS); 
+OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
 // RTC
@@ -26,11 +24,11 @@ RTC_DS1307 rtc;
 // RC
 // https://daniel-ziegler.com/arduino/mikrocontroller/2017/06/16/Funksteckdose-arduino/
 #include <RCSwitch.h>
-RCSwitch rcSender = RCSwitch();
+RCSwitch sender = RCSwitch();
 
 void setup() {
   Serial.begin(9600);
-  
+
   setupDisplay();
   setupTempSensors();
   setupRtc();
@@ -38,35 +36,34 @@ void setup() {
 }
 
 void setupDisplay(void) {
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;); 
-  }
-  
-  display.display();
-  delay(1000);
-  display.clearDisplay();
-  display.display();
+  Wire.begin();
+  Wire.setClock(400000L);
+
+#if RST_PIN >= 0
+  oled.begin(&Adafruit128x64, I2C_ADDRESS, RST_PIN);
+#else // RST_PIN >= 0
+  oled.begin(&Adafruit128x64, I2C_ADDRESS);
+#endif // RST_PIN >= 0
+
+  oled.setFont(Adafruit5x7);
 }
 
 void setupTempSensors() {
   sensors.begin();
 
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Found ");
-  display.print(sensors.getDeviceCount(), DEC);
-  display.println(" devices.");
-  display.println("");
-
-   display.display();
-   delay(1000);
+  oled.clear();
+  oled.print("Found ");
+  oled.print(sensors.getDeviceCount(), DEC);
+  oled.print(" temp. sensors");
+  
+  delay(1000);
+  oled.clear();
 }
 
 void setupRtc() {
-  #ifndef ESP8266
-  while (!Serial); 
-  #endif
+#ifndef ESP8266
+  while (!Serial);
+#endif
 
   if (! rtc.begin()) {
     Serial.println("Couldn't find RTC");
@@ -76,116 +73,96 @@ void setupRtc() {
 
   if (! rtc.isrunning()) {
     Serial.println("RTC is NOT running, let's set the time!");
-     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
 }
 
 void setupRc() {
-  rcSender.enableTransmit(7);
-  rcSender.setProtocol(1);
-  rcSender.setPulseLength(415);
+  sender.enableTransmit(7);
+  sender.setProtocol(1);
+  sender.setPulseLength(415);
 }
 
 float dayTemp;
 float nightTemp;
 
 void loop() {
- DateTime time = rtc.now();
- 
- display.clearDisplay();
- display.setTextSize(1);
- display.setTextColor(SSD1306_WHITE);
- 
- display.setCursor(0,0);
- display.print(String(time.timestamp(DateTime::TIMESTAMP_DATE)));
+  DateTime time = rtc.now();
 
- display.setCursor(80,0);
- display.print(String(time.timestamp(DateTime::TIMESTAMP_TIME)));
+  oled.setCursor(0,0);
 
- sensors.requestTemperatures();
- dayTemp = sensors.getTempCByIndex(0);
- nightTemp = sensors.getTempCByIndex(1);
+  oled.print(String(time.timestamp(DateTime::TIMESTAMP_DATE)));
+  oled.print("   ");
+  oled.print(String(time.timestamp(DateTime::TIMESTAMP_TIME)));
+  nl();
+  nl();
 
- int colDay = 36;
- int colNight = 85;
+  sensors.requestTemperatures();
+  dayTemp = sensors.getTempCByIndex(0);
+  nightTemp = sensors.getTempCByIndex(1);
 
- int lineHeight = 11;
- int head = 11;
- int line1 = 24;
- int line2 = lineHeight + line1;
- int line3 = lineHeight + line2;
- int line4 = lineHeight + line3;
+  //head
+  oled.print("      Day    Night");
+  nl();
+  oled.print("---------------------");
+  nl();
 
- //head
- display.setCursor(colDay,head);
- display.print("Day");
+  //Line 1: Current Temp
+  oled.print("Tmp   ");
 
- display.setCursor(colNight,head);
- display.print("Night");
- 
- display.drawLine(0, 21,  display.width()-1, 21, SSD1306_WHITE);
+  oled.print(dayTemp);
+  oled.print((char)9);
+  oled.print("C");
 
- //Line 1: Current Temp
- display.setCursor(0,line1);
- display.print("Tmp");
+  if (dayTemp < 10) {
+    oled.print("  ");  
+  } else {
+    oled.print(" ");
+  }
+  
 
- display.setCursor(colDay,line1);
- display.print(dayTemp);
- display.print((char)9);
- display.print("C");
+  oled.print(nightTemp);
+  oled.print((char)9);
+  oled.print("C");
+  nl();
 
- display.setCursor(colNight,line1);
- display.print(nightTemp);
- display.print((char)9);
- display.print("C");
+  //Line 2: Day/Night Mode
+  oled.print("Prfl  ");
+  oled.print(isDay() ? "true   " : "false  ");
+  oled.print(!isDay() ? "true " : "false");
+  nl();
 
- //Line 2: Day/Night Mode
- display.setCursor(0,line2);
- display.print("Prfl");
+  //Line 3: Temp Limit
+  oled.print("Heat  ");
+  oled.print(needsHeatingDay() ? "true   " : "false  ");
+  oled.print(needsHeatingNight() ? "true " : "false");
+  nl();
 
- display.setCursor(colDay,line2);
- display.print(isDay() ? "true" : "false");
+  //Line 4: Switch status
 
- display.setCursor(colNight,line2);
- display.print(!isDay() ? "true" : "false");
+  oled.print("Swtch ");
+  oled.print(shouldSwitchOnDay() ? "true   " : "false  ");
+  oled.print(shouldSwitchOnNight() ? "true " : "false");
+  nl();
 
- //Line 3: Temp Limit
- display.setCursor(0,line3);
- display.print("Heat");
+  checkAndSwitchHeating();
 
- display.setCursor(colDay,line3);
- display.print(needsHeatingDay() ? "true" : "false");
+  delay(500);
 
- display.setCursor(colNight,line3);
- display.print(needsHeatingNight() ? "true" : "false");
+}
 
- //Line 4: Switch status
+void checkAndSwitchHeating() {
+  if (shouldSwitchOnDay()) {
+    heating(1, true);
+  } else {
+    heating(1, false);
+  }
 
- display.setCursor(0,line4);
- display.print("Swtch");
-
- display.setCursor(colDay,line4);
- display.print(shouldSwitchOnDay() ? "true" : "false");
-
- display.setCursor(colNight,line4);
- display.print(shouldSwitchOnNight() ? "true" : "false");
-
- display.display();
-
- if (shouldSwitchOnDay()) {
-   heating(1, true);
- } else {
-   heating(1, false);
- }
-
- if (shouldSwitchOnNight()) {
-   heating(2, true);
- } else {
-   heating(2, false);
- }
- 
- delay(500);
-
+  if (shouldSwitchOnNight()) {
+    heating(2, true);
+  } else {
+    heating(2, false);
+  }
 }
 
 bool shouldSwitchOnDay() {
@@ -211,24 +188,23 @@ bool isDay() {
 }
 
 void heating(int id, bool state) {
-      if (rtc.now().second() == 10) {
-        rcSender.send("000101010001010101010100");  
+    if (id == 1) {
+      if (state) {
+        sender.send("000101010001010101010101");
+      } else {
+        sender.send("000101010001010101010100");
       }
-      
+    }
   
-//  if (id == 1) {
-//    if (state) {
-//      sender.send("000101010001010101010101");
-//    } else {
-//      sender.send("000101010001010101010100");
-//    }
-//  }
-//
-//  if (id == 2) {
-//    if (state) {
-//      sender.send("000101010100010101010101");
-//    } else {
-//      sender.send("000101010100010101010100");
-//    }
-//  }
+    if (id == 2) {
+      if (state) {
+        sender.send("000101010100010101010101");
+      } else {
+        sender.send("000101010100010101010100");
+      }
+    }
+}
+
+void nl() {
+  oled.println("");
 }
