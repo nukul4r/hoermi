@@ -85,16 +85,30 @@ void setupRc() {
 
 float dayTemp;
 float nightTemp;
+int currentStep = 0;
+// 1 step = 2.3 sec -> 10 min = 260 steps
+const int SWITCH_INTERVAL_STEPS = 260;
 
 void loop() {
   DateTime time = rtc.now();
-
+  int startTime = time.unixtime();
+  
   oled.setCursor(0,0);
 
   oled.print(String(time.timestamp(DateTime::TIMESTAMP_DATE)));
   oled.print("   ");
   oled.print(String(time.timestamp(DateTime::TIMESTAMP_TIME)));
   nl();
+
+  int remaining = SWITCH_INTERVAL_STEPS - currentStep;
+  if (remaining != 0) {
+    oled.print("Next switch: ");
+    oled.print(remaining);
+    oled.print("    ");
+  } else {
+    oled.print("Sending switch now...");    
+  }
+
   nl();
 
   sensors.requestTemperatures();
@@ -148,7 +162,15 @@ void loop() {
   checkAndSwitchHeating();
 
   delay(500);
+  stepOrReset();
+}
 
+void stepOrReset() {
+  if (currentStep >= SWITCH_INTERVAL_STEPS) {
+    currentStep = 0;
+  } else {
+    currentStep = currentStep + 1;
+  }
 }
 
 void checkAndSwitchHeating() {
@@ -166,11 +188,11 @@ void checkAndSwitchHeating() {
 }
 
 bool shouldSwitchOnDay() {
-  return (isDay() && needsHeatingDay());
+  return (isDay() && needsHeatingDay() && currentStep == 0);
 }
 
 bool shouldSwitchOnNight() {
-  return (!isDay() && needsHeatingNight());
+  return (!isDay() && needsHeatingNight() && currentStep == 0);
 }
 
 bool needsHeatingDay() {
