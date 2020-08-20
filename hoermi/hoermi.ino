@@ -159,8 +159,10 @@ void loop() {
   oled.print(shouldSwitchOnNight() ? "true " : "false");
   nl();
 
-  checkAndSwitchHeating();
-
+  if (currentStep == 0) {
+    checkAndSwitchHeating();  
+  }
+  
   delay(500);
   stepOrReset();
 }
@@ -188,11 +190,11 @@ void checkAndSwitchHeating() {
 }
 
 bool shouldSwitchOnDay() {
-  return (isDay() && needsHeatingDay() && currentStep == 0);
+  return (isDay() && needsHeatingDay());
 }
 
 bool shouldSwitchOnNight() {
-  return (!isDay() && needsHeatingNight() && currentStep == 0);
+  return (!isDay() && needsHeatingNight());
 }
 
 bool needsHeatingDay() {
