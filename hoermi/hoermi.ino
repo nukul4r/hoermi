@@ -1,5 +1,3 @@
-#include <Arduino.h>
-
 // DISPLAY
 // https://github.com/greiman/SSD1306Ascii/blob/master/examples/HelloWorldWire/HelloWorldWire.ino
 #include <Wire.h>
@@ -28,26 +26,6 @@ RTC_DS1307 rtc;
 #include <RCSwitch.h>
 RCSwitch sender = RCSwitch();
 
-// declarations for setup
-void setup();
-void setupTempSensors();
-void setupDisplay();
-void setupTempSensors();
-void setupRtc();
-void setupRc();
-
-// declarations for loop
-void loop();
-void stepOrReset();
-void checkAndSwitchHeating();
-bool shouldSwitchOnDay();
-bool shouldSwitchOnNight();
-bool needsHeatingDay();
-bool needsHeatingNight();
-bool isDay();
-void heating(int id, bool state);
-void nl();
-
 void setup() {
   Serial.begin(9600);
 
@@ -57,7 +35,7 @@ void setup() {
   setupRc();
 }
 
-void setupDisplay() {
+void setupDisplay(void) {
   Wire.begin();
   Wire.setClock(400000L);
 
