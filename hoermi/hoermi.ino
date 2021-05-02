@@ -153,7 +153,6 @@ void loop() {
   nl();
 
   //Line 4: Switch status
-
   oled.print("Swtch ");
   oled.print(shouldSwitchOnDay() ? "true   " : "false  ");
   oled.print(shouldSwitchOnNight() ? "true " : "false");
@@ -194,7 +193,8 @@ bool shouldSwitchOnDay() {
 }
 
 bool shouldSwitchOnNight() {
-  return (!isDay() && needsHeatingNight());
+  //return (!isDay() && needsHeatingNight());
+  return needsHeatingNight();
 }
 
 bool needsHeatingDay() {
