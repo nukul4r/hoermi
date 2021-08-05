@@ -1,18 +1,16 @@
 // DISPLAY
-// https://github.com/greiman/SSD1306Ascii/blob/master/examples/HelloWorldWire/HelloWorldWire.ino
-#include <Wire.h>
-#include "SSD1306Ascii.h"
-#include "SSD1306AsciiWire.h"
-#define I2C_ADDRESS 0x3C
-#define RST_PIN -1
-SSD1306AsciiWire oled;
+#include <Wire.h> // Library for I2C communication
+#include <LiquidCrystal_I2C.h> // Library for LCD
+// Wiring: SDA pin is connected to A4 and SCL pin to A5.
+// Connect to LCD via I2C, default address 0x27 (A0-A2 not jumpered)
+LiquidCrystal_I2C lcd = LiquidCrystal_I2C(0x27, 20, 4); // Change to (0x27,20,4) for 20x4 LCD.
 
 
-// TEMPERATURE
+// TEMPERATURE EXT
 // https://lastminuteengineers.com/multiple-ds18b20-arduino-tutorial/
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#define ONE_WIRE_BUS 4
+#define ONE_WIRE_BUS 4 //data = 4
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
@@ -36,28 +34,19 @@ void setup() {
 }
 
 void setupDisplay(void) {
-  Wire.begin();
-  Wire.setClock(400000L);
-
-#if RST_PIN >= 0
-  oled.begin(&Adafruit128x64, I2C_ADDRESS, RST_PIN);
-#else // RST_PIN >= 0
-  oled.begin(&Adafruit128x64, I2C_ADDRESS);
-#endif // RST_PIN >= 0
-
-  oled.setFont(Adafruit5x7);
+  lcd.init();
+  lcd.backlight();
 }
 
 void setupTempSensors() {
   sensors.begin();
 
-  oled.clear();
-  oled.print("Found ");
-  oled.print(sensors.getDeviceCount(), DEC);
-  oled.print(" temp. sensors");
-  
+  lcd.clear();
+  lcd.print("Temp. sensors: ");
+  lcd.print(sensors.getDeviceCount(), DEC);
+   
   delay(1000);
-  oled.clear();
+  lcd.clear();
 }
 
 void setupRtc() {
@@ -88,82 +77,111 @@ float nightTemp;
 int currentStep = 0;
 // 1 step = 2.3 sec -> 10 min = 260 steps
 const int SWITCH_INTERVAL_STEPS = 260;
+boolean lastDisplay = true;
 
 void loop() {
+
   DateTime time = rtc.now();
-  int startTime = time.unixtime();
   
-  oled.setCursor(0,0);
-
-  oled.print(String(time.timestamp(DateTime::TIMESTAMP_DATE)));
-  oled.print("   ");
-  oled.print(String(time.timestamp(DateTime::TIMESTAMP_TIME)));
-  nl();
-
-  int remaining = SWITCH_INTERVAL_STEPS - currentStep;
-  if (remaining != 0) {
-    oled.print("Next switch: ");
-    oled.print(remaining);
-    oled.print("    ");
+  if ((time.second() / 10) % 2 == 0) {
+    displayStatus();
   } else {
-    oled.print("Sending switch now...");    
-  }
-
-  nl();
-
-  sensors.requestTemperatures();
-  dayTemp = sensors.getTempCByIndex(0);
-  nightTemp = sensors.getTempCByIndex(1);
-
-  //head
-  oled.print("      Day    Night");
-  nl();
-  oled.print("---------------------");
-  nl();
-
-  //Line 1: Current Temp
-  oled.print("Tmp   ");
-
-  oled.print(dayTemp);
-  oled.print((char)9);
-  oled.print("C");
-
-  if (dayTemp < 10) {
-    oled.print("  ");  
-  } else {
-    oled.print(" ");
+    displaySwitch();
   }
   
-
-  oled.print(nightTemp);
-  oled.print((char)9);
-  oled.print("C");
-  nl();
-
-  //Line 2: Day/Night Mode
-  oled.print("Prfl  ");
-  oled.print(isDay() ? "true   " : "false  ");
-  oled.print(!isDay() ? "true " : "false");
-  nl();
-
-  //Line 3: Temp Limit
-  oled.print("Heat  ");
-  oled.print(needsHeatingDay() ? "true   " : "false  ");
-  oled.print(needsHeatingNight() ? "true " : "false");
-  nl();
-
-  //Line 4: Switch status
-  oled.print("Swtch ");
-  oled.print(shouldSwitchOnDay() ? "true   " : "false  ");
-  oled.print(shouldSwitchOnNight() ? "true " : "false");
-  nl();
-
   if (currentStep == 0) {
     checkAndSwitchHeating();  
   }
   
   delay(500);
   stepOrReset();
+}
+
+void displayTemp() {
+  sensors.requestTemperatures();
+  dayTemp = sensors.getTempCByIndex(0);
+  nightTemp = sensors.getTempCByIndex(1);
+
+  lcd.setCursor(0,0);
+
+  lcd.print("D ");
+  lcd.print(dayTemp);
+  lcd.print((char)223);
+  lcd.print("C");
+
+  lcd.setCursor(10,0);
+  lcd.print("N ");
+  lcd.print(nightTemp);
+  lcd.print((char)223);
+  lcd.print("C");
+}
+
+void displayStatus() {
+  if (lastDisplay) {
+    lcd.clear();
+  }
+
+  lastDisplay = false;
+
+  //Line 1: Temperature
+  displayTemp();
+  
+  DateTime time = rtc.now();
+  //int startTime = time.unixtime();
+
+  //Line 3: Current time
+  lcd.setCursor(0,2);
+  lcd.print(String(time.timestamp(DateTime::TIMESTAMP_DATE)));
+  lcd.print(" ");
+  lcd.print(String(time.timestamp(DateTime::TIMESTAMP_TIME)));
+
+  //Line 4: Next switch
+  lcd.setCursor(0,3);
+  int remaining = SWITCH_INTERVAL_STEPS - currentStep;
+  if (remaining != 0) {
+    lcd.print("Next switch: ");
+    lcd.print(remaining);
+  } else {
+    lcd.print("Switching...");    
+  }
+}
+
+void displaySwitch() {
+  if (!lastDisplay) {
+    lcd.clear();
+  }
+
+  lastDisplay = true;
+
+  //Line 1: Temperature
+  displayTemp();
+
+  //Line 2: Day/Night Mode
+  lcd.setCursor(0,1);
+  lcd.print("   Profile: ");
+  lcd.print(isDay() ? "Day" : "Night");
+
+  //Line 3: Temp Limit
+  lcd.setCursor(0,2);
+  lcd.print("Needs heat: ");
+  if (isDay()) {
+    lcd.print(needsHeatingDay() ? "yes" : "no");
+  } else {
+    lcd.print(needsHeatingNight() ? "yes" : "no");
+  }
+
+  //Line 4: Switch status
+  lcd.setCursor(0,3);
+  lcd.print(" Switch on: ");
+  if (isDay()) {
+    lcd.print(shouldSwitchOnDay() ? "yes" : "no");
+  } else {
+    lcd.print(shouldSwitchOnNight() ? "yes" : "no");
+  }
+}
+
+void displayNight() {
+  
 }
 
 void stepOrReset() {
@@ -230,5 +248,5 @@ void heating(int id, bool state) {
 }
 
 void nl() {
-  oled.println("");
+  //oled.println("");
 }
