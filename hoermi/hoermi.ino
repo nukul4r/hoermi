@@ -42,8 +42,8 @@ void setupTempSensors() {
   sensors.begin();
 
   lcd.clear();
-  lcd.print("Temp. sensors: ");
-  lcd.print(sensors.getDeviceCount(), DEC);
+  print("Temp. sensors: ");
+  print(String(sensors.getDeviceCount()));
    
   delay(1000);
   lcd.clear();
@@ -104,16 +104,16 @@ void displayTemp() {
 
   lcd.setCursor(0,0);
 
-  lcd.print("D ");
-  lcd.print(dayTemp);
-  lcd.print((char)223);
-  lcd.print("C");
+  print("D ");
+  print(String(dayTemp));
+  print(String((char)223));
+  print("C");
 
   lcd.setCursor(10,0);
-  lcd.print("N ");
-  lcd.print(nightTemp);
-  lcd.print((char)223);
-  lcd.print("C");
+  print("N ");
+  print(String(nightTemp));
+  print(String((char)223));
+  print("C");
 }
 
 void displayStatus() {
@@ -131,18 +131,18 @@ void displayStatus() {
 
   //Line 3: Current time
   lcd.setCursor(0,2);
-  lcd.print(String(time.timestamp(DateTime::TIMESTAMP_DATE)));
-  lcd.print(" ");
-  lcd.print(String(time.timestamp(DateTime::TIMESTAMP_TIME)));
+  print(String(time.timestamp(DateTime::TIMESTAMP_DATE)));
+  print(" ");
+  print(String(time.timestamp(DateTime::TIMESTAMP_TIME)));
 
   //Line 4: Next switch
   lcd.setCursor(0,3);
   int remaining = SWITCH_INTERVAL_STEPS - currentStep;
   if (remaining != 0) {
-    lcd.print("Next switch: ");
-    lcd.print(remaining);
+    print("Next switch: ");
+    print(String(remaining));
   } else {
-    lcd.print("Switching...");    
+    print("Switching...");    
   }
 }
 
@@ -158,25 +158,25 @@ void displaySwitch() {
 
   //Line 2: Day/Night Mode
   lcd.setCursor(0,1);
-  lcd.print("   Profile: ");
-  lcd.print(isDay() ? "Day" : "Night");
+  print("   Profile: ");
+  print(isDay() ? "Day" : "Night");
 
   //Line 3: Temp Limit
   lcd.setCursor(0,2);
-  lcd.print("Needs heat: ");
+  print("Needs heat: ");
   if (isDay()) {
-    lcd.print(needsHeatingDay() ? "yes" : "no");
+    print(needsHeatingDay() ? "yes" : "no");
   } else {
-    lcd.print(needsHeatingNight() ? "yes" : "no");
+    print(needsHeatingNight() ? "yes" : "no");
   }
 
   //Line 4: Switch status
   lcd.setCursor(0,3);
-  lcd.print(" Switch on: ");
+  print(" Switch on: ");
   if (isDay()) {
-    lcd.print(shouldSwitchOnDay() ? "yes" : "no");
+    print(shouldSwitchOnDay() ? "yes" : "no");
   } else {
-    lcd.print(shouldSwitchOnNight() ? "yes" : "no");
+    print(shouldSwitchOnNight() ? "yes" : "no");
   }
 }
 
@@ -247,6 +247,7 @@ void heating(int id, bool state) {
     }
 }
 
-void nl() {
-  //oled.println("");
+void print(String value) {
+  lcd.print(value);
+  Serial.println(value);
 }
